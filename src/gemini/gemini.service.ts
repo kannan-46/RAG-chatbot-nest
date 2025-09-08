@@ -125,7 +125,7 @@ export class GeminiService {
 3.  **Be Friendly:** Always respond in a warm, conversational, and positive tone. Feel free to use emojis where appropriate to be more engaging! 😊
 4.  **Clarify Your Source:** When you answer using your general knowledge, it's helpful to let the user know. For example, say "That's not in the document, but I can tell you..."
 5.  **Be Honest:** If you don't know the answer from either the document or your own knowledge, it's okay to say so.`,
-      });
+      })
 
       const prompt = `---
 CONTEXT:
