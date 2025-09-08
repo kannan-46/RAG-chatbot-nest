@@ -12,7 +12,7 @@ type geminiCompletion = {
 @Injectable()
 export class GeminiService {
   private readonly genai: GoogleGenerativeAI;
-  private readonly LLM = 'gemini-2.5-pro';
+  private readonly LLM = 'gemini-2.5-flash';
 
   constructor() {
     this.genai = new GoogleGenerativeAI(process.env.GEMINI_API!);
