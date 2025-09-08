@@ -126,10 +126,30 @@ export class RagService {
       );
     });
 
-    const ranked = await this.helper.rankCandidates(qVec, unique).slice(0, 10);
+    const ranked = await this.helper.rankCandidates(qVec, unique)
+    const topK=ranked.slice(0,10)
     const context = ranked.map((c) => c.textChunk).join('\n\n---\n\n');
-
+     console.log(`Final context contains ${topK.length} chunks.`);
+    console.debug('--- FINAL CONTEXT ---');
+    console.debug(context);
+    console.debug('--- END OF CONTEXT ---');
     console.log(`Final context contains ${ranked.length} chunks`);
-    return this.gemini.getGeminiCompletion(question, context);
+
+    const inputTokens=await this.gemini.countFullPrompt(question,context)
+    console.log(`[PROACTIVE CHECK] Estimated total input tokens: ${inputTokens}`);
+    
+      const { text: answer, usage } = await this.gemini.getGeminiCompletion(
+      question,
+      context,
+    );
+    console.log('--- LLM INTERACTION LOG ---');
+    console.log(`INPUT TO LLM (Question): ${question}`);
+    console.log(`OUTPUT FROM LLM (Answer): ${answer}`);
+    console.log(
+        `[REACTIVE LOG] Actual Token Usage - Input: ${usage.inputTokens}, Output: ${usage.outputTokens}, Total: ${usage.totalTokens}`
+    );
+    console.log('--- END OF LOG ---');
+    
+    return answer;
   }
 }
