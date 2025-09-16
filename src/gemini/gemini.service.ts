@@ -9,6 +9,8 @@ type geminiCompletion = {
     totalTokens: number;
   };
 };
+
+type userIntent = 'document_question' | 'general_question';
 @Injectable()
 export class GeminiService {
   private readonly genai: GoogleGenerativeAI;
@@ -87,13 +89,36 @@ QUESTION: ${question}`;
 4.  **Clarify Your Source:** When you answer using your general knowledge, it's helpful to let the user know. For example, say "That's not in the document, but I can tell you..."
 5.  **Be Honest:** If you don't know the answer from either the document or your own knowledge, it's okay to say so.`,
     });
-  const prompt = `---
+    const prompt = `---
 CONTEXT:
 ${context}
 ---
 QUESTION: ${question}`;
 
-const {totalTokens}=await model.countTokens(prompt)
-return totalTokens
+    const { totalTokens } = await model.countTokens(prompt);
+    return totalTokens;
+  }
+
+  async detectUserIntent(question: string): Promise<userIntent> {
+    try {
+      const model = this.genai.getGenerativeModel({ model: this.LLM });
+      const prompt = `Analyze the user's question and determine its intent. Respond with ONLY "document_question" or "general_question".
+
+- "document_question": The user is asking about specific information that would be contained in a document, like "who is the main character?", "summarize this", "what is the town's name?".
+- "general_question": The user is making small talk, asking a general knowledge question, or giving a command, like "hello", "what is the capital of France?", "thank you".
+
+Question: "${question}"
+Intent:`;
+      const result = await model.generateContent(prompt);
+      const intent = result.response.text().trim();
+
+      if (intent === 'document_question') {
+        return 'document_question';
+      }
+      return 'general_question';
+    } catch (error) {
+      console.error('Error detecting user intent', error.stack);
+      return 'general_question';
+    }
   }
 }

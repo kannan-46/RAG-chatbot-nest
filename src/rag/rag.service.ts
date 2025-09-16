@@ -27,129 +27,117 @@ export class RagService {
     }
     console.log(`Stored ${chunks.length} chunks for ${fileName}`);
   }
-
-  // async askQuestion(question: string, fileName: string): Promise<string> {
-  //   const qVec = await this.gemini.getGeminiEmbedding(question);
-  //   const fullHash = this.helper.generateLsh(qVec);
-  //   console.log('Full LSH hash:', fullHash);
-  //   const scales = [12, 10, 8, 6];
-  //   let all: any[] = [];
-  //   for (const prefixLength of scales) {
-  //     const probeCount = prefixLength;
-  //     const prefixes = this.helper.generateProbePrefixes(
-  //       fullHash,
-  //       prefixLength,
-  //       probeCount,
-  //     );
-  //     console.log(`Probing ${prefixLength}-bit prefixes:`, prefixes);
-  //     for (const p of prefixes) {
-  //       console.log(` Querying LSH#${p}`);
-  //       const items = await this.client.fetchCandidatesByFileAndLshPrefix(
-  //         fileName,
-  //         p,
-  //       );
-  //       console.log(`  → Retrieved ${items.length} items`);
-  //       all.push(...items)
-  //     }
-  //   }
-  //   const unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
-  //   console.log(`Total unique candidates: ${unique.length}`);
-  //   if (unique.length === 0) {
-  //     return "Sorry, I couldn't find relevant info in those materials.";
-  //   }
-  //   unique.forEach((c, i) => {
-  //     console.log(
-  //       `Candidate ${i}:`,
-  //       c.textChunk.slice(0, 80).replace(/\n/g, ' ') + '...',
-  //     );
-  //   });
-  //   const ranked = this.helper.rankCandidates(qVec, unique).slice(0, 5);
-  //   const context = ranked.map((c) => c.textChunk).join('\n\n---\n\n');
-  //   console.log(
-  //     'Final context passed to LLM:',
-  //     context.substring(0, 200).replace(/\n/g, ' ') + '...',
-  //   );
-  //   return this.gemini.getGeminiCompletion(question, context);
-  // }
-
+  
   async askQuestion(question: string, fileName: string): Promise<string> {
-    const qVec = await this.gemini.getGeminiEmbedding(question);
-    const lshHash = await this.helper.generateLsh(qVec);
-    console.log('full LSH hash:', lshHash);
+    const intent = await this.gemini.detectUserIntent(question);
+    let answer: string;
+    let usage;
 
-    const scales = [12, 10, 8, 6];
-    let all: any[] = [];
+    if (intent === 'document_question') {
+      const qVec = await this.gemini.getGeminiEmbedding(question);
+      const lshHash = await this.helper.generateLsh(qVec);
+      console.log('full LSH hash:', lshHash);
 
-    for (const prefixLength of scales) {
-      const probeCount = Math.min(prefixLength, 8);
-      const prefixes = await this.helper.generateProbePrefixes(
-        lshHash,
-        prefixLength,
-        probeCount,
-      );
+      const scales = [12, 10, 8, 6];
+      let all: any[] = [];
 
-      for (const p of prefixes) {
-        const items = await this.client.fetchCandidatesByFileAndLshPrefix(
-          fileName,
-          p,
+      for (const prefixLength of scales) {
+        const probeCount = Math.min(prefixLength, 8);
+        const prefixes = await this.helper.generateProbePrefixes(
+          lshHash,
+          prefixLength,
+          probeCount,
         );
-        all.push(...items);
+
+        for (const p of prefixes) {
+          const items = await this.client.fetchCandidatesByFileAndLshPrefix(
+            fileName,
+            p,
+          );
+          all.push(...items);
+        }
+        const unique = Array.from(
+          new Map(all.map((it) => [it.SK, it])).values(),
+        );
+        if (unique.length >= 15)
+          console.log(
+            `Early stop: found ${unique.length} candidates at ${prefixLength}-bit`,
+          );
+        break;
       }
-      const unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
-      if (unique.length >= 15)
+      let unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
+      console.log(`LSH retrieved ${unique.length} unique candidates`);
+
+      if (unique.length < 10) {
         console.log(
-          `Early stop: found ${unique.length} candidates at ${prefixLength}-bit`,
+          'LSh recall too low, fetching all chunks for comprehensive search',
         );
-      break;
-    }
-    let unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
-    console.log(`LSH retrieved ${unique.length} unique candidates`);
+        const allChunks = await this.client.fetchAllChunksForFile(
+          fileName,
+          100,
+        );
 
-    if (unique.length < 10) {
+        const combined = [...unique, ...allChunks];
+        unique = Array.from(
+          new Map(combined.map((it) => [it.SK, it])).values(),
+        );
+        console.log(`After fallback: ${unique.length} total candidates`);
+      }
+      if (unique.length === 0) {
+        return "Sorry, I couldn't find relevant info in those materials.";
+      }
+
+      unique.forEach((c, i) => {
+        console.log(
+          `Candidate ${i}:`,
+          c.textChunk.slice(0, 80).replace(/\n/g, ' ') + '...',
+        );
+      });
+
+      const ranked = await this.helper.rankCandidates(qVec, unique);
+      const topK = ranked.slice(0, 10);
+      const context = ranked.map((c) => c.textChunk).join('\n\n---\n\n');
+      console.log(`Final context contains ${topK.length} chunks.`);
+      console.debug('--- FINAL CONTEXT ---');
+      console.debug(context);
+      console.debug('--- END OF CONTEXT ---');
+      console.log(`Final context contains ${ranked.length} chunks`);
+
+      const inputTokens = await this.gemini.countFullPrompt(question, context);
       console.log(
-        'LSh recall too low, fetching all chunks for comprehensive search',
+        `[PROACTIVE CHECK] Estimated total input tokens: ${inputTokens}`,
       );
-      const allChunks = await this.client.fetchAllChunksForFile(fileName, 100);
 
-      const combined = [...unique, ...allChunks];
-      unique = Array.from(new Map(combined.map((it) => [it.SK, it])).values());
-      console.log(`After fallback: ${unique.length} total candidates`);
-    }
-    if (unique.length === 0) {
-      return "Sorry, I couldn't find relevant info in those materials.";
-    }
-
-    unique.forEach((c, i) => {
+      const completionResponse = await this.gemini.getGeminiCompletion(
+        question,
+        context,
+      );
+      answer = completionResponse.text;
+      usage = completionResponse.usage;
+      console.log('--- LLM INTERACTION LOG ---');
+      console.log(`INPUT TO LLM (Question): ${question}`);
+      console.log(`OUTPUT FROM LLM (Answer): ${answer}`);
       console.log(
-        `Candidate ${i}:`,
-        c.textChunk.slice(0, 80).replace(/\n/g, ' ') + '...',
+        `[REACTIVE LOG] Actual Token Usage - Input: ${usage.inputTokens}, Output: ${usage.outputTokens}, Total: ${usage.totalTokens}`,
       );
-    });
-
-    const ranked = await this.helper.rankCandidates(qVec, unique)
-    const topK=ranked.slice(0,10)
-    const context = ranked.map((c) => c.textChunk).join('\n\n---\n\n');
-     console.log(`Final context contains ${topK.length} chunks.`);
-    console.debug('--- FINAL CONTEXT ---');
-    console.debug(context);
-    console.debug('--- END OF CONTEXT ---');
-    console.log(`Final context contains ${ranked.length} chunks`);
-
-    const inputTokens=await this.gemini.countFullPrompt(question,context)
-    console.log(`[PROACTIVE CHECK] Estimated total input tokens: ${inputTokens}`);
-    
-      const { text: answer, usage } = await this.gemini.getGeminiCompletion(
-      question,
-      context,
-    );
-    console.log('--- LLM INTERACTION LOG ---');
-    console.log(`INPUT TO LLM (Question): ${question}`);
-    console.log(`OUTPUT FROM LLM (Answer): ${answer}`);
-    console.log(
-        `[REACTIVE LOG] Actual Token Usage - Input: ${usage.inputTokens}, Output: ${usage.outputTokens}, Total: ${usage.totalTokens}`
-    );
-    console.log('--- END OF LOG ---');
-    
+      console.log('--- END OF LOG ---');
+    } else {
+      console.log(`Intent is general question...`);
+      const completionResponse = await this.gemini.getGeminiCompletion(
+        question,
+        '',
+      );
+      answer = completionResponse.text;
+      usage = completionResponse.usage;
+      console.log('--- LLM INTERACTION LOG ---');
+      console.log(`INTENT: ${intent}`);
+      console.log(`INPUT TO LLM (Question): ${question}`);
+      console.log(`OUTPUT FROM LLM (Answer): ${answer}`);
+      console.log(
+        `[REACTIVE LOG] Actual Token Usage - Input: ${usage.inputTokens}, Output: ${usage.outputTokens}, Total: ${usage.totalTokens}`,
+      );
+      console.log('--- END OF LOG ---');
+    }
     return answer;
   }
 }
