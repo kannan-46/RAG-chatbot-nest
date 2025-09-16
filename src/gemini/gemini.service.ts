@@ -23,7 +23,7 @@ export class GeminiService {
   async getGeminiEmbedding(text: string): Promise<number[]> {
     try {
       const model = this.genai.getGenerativeModel({
-        model: 'text-embedding-004',
+        model: 'gemini-embedding-001',
       });
       const result = await model.embedContent(text);
       const response = result.embedding.values;
