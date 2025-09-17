@@ -27,6 +27,7 @@ export class RagService {
         const vector = await this.gemini.getGeminiEmbedding(chunk);
         if (vector.length !== 3072) {
           console.log('vector length', vector.length);
+
           console.warn('Embedding dim mismatch', vector.length);
         }
 

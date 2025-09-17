@@ -14,7 +14,7 @@ type userIntent = 'document_question' | 'general_question';
 @Injectable()
 export class GeminiService {
   private readonly genai: GoogleGenerativeAI;
-  private readonly LLM = 'gemini-2.5-flash';
+  private readonly LLM = 'gemini-2.5-pro';
 
   constructor() {
     this.genai = new GoogleGenerativeAI(process.env.GEMINI_API!);
@@ -24,7 +24,6 @@ export class GeminiService {
     try {
       const model = this.genai.getGenerativeModel({
         model: 'gemini-embedding-001',
-        
       });
       const result = await model.embedContent(text);
       return result.embedding.values;
