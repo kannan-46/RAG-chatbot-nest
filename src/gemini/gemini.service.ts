@@ -24,6 +24,7 @@ export class GeminiService {
     try {
       const model = this.genai.getGenerativeModel({
         model: 'gemini-embedding-001',
+        
       });
       const result = await model.embedContent(text);
       return result.embedding.values;
