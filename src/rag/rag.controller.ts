@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  UseInterceptors,
   UploadedFile,
   Body,
   BadRequestException,
@@ -17,34 +16,32 @@ class AskQuestionDto {
   fileName: string;
 }
 
+class processBatch {
+  fileName: string;
+  chunks: string[];
+  startChunkNumber: number;
+}
+
 @Controller('api')
 export class RagController {
   private readonly logger = new Logger(RagController.name);
 
   constructor(private readonly ragService: RagService) {}
 
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file uploaded.');
-
-    const original = file.originalname;
-    const fileName = original.replace(/\s+/g, '_');
-    this.logger.log(`Received file: ${fileName}`);
-
-    let text: string;
-    try {
-      text =
-        file.mimetype === 'application/pdf'
-          ? (await pdfParse(file.buffer)).text
-          : file.buffer.toString('utf-8');
-    } catch (err) {
-      this.logger.error(`Parse error ${fileName}`, err.stack);
-      throw new InternalServerErrorException('File processing failed.');
-    }
-
-    await this.ragService.processAndStoreDocument(text, fileName);
-    return { success: true, message: `File "${fileName}" processed successfully.` };
+  @Post('process-batch')
+  async uploadFile(@Body() body: processBatch) {
+    console.log(`process batch body`,JSON.stringify(body));
+    
+    const { fileName, chunks, startChunkNumber } = body;
+if (!fileName || !Array.isArray(chunks) || chunks.length === 0 || startChunkNumber == null) {
+  throw new BadRequestException('fileName, chunks and startChunkNumber are required.');
+}
+    await this.ragService.processAndStoreDocument(
+      fileName,
+      chunks,
+      startChunkNumber,
+    );
+    return { success: true, message: `Batch processed successfully` };
   }
 
   @Post('ask')

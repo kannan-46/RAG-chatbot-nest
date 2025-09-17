@@ -26,10 +26,9 @@ export class GeminiService {
         model: 'gemini-embedding-001',
       });
       const result = await model.embedContent(text);
-      const response = result.embedding.values;
-      return response;
+      return result.embedding.values;
     } catch (error) {
-      console.error('Error getting Gemini embedding', error.stack);
+      console.error('❌ Error getting Gemini embedding:', error);
       throw new Error('Failed to get embedding from Gemini.');
     }
   }

@@ -11,23 +11,45 @@ export class RagService {
     private readonly gemini: GeminiService,
   ) {}
 
-  async processAndStoreDocument(text: string, fileName: string) {
-    const chunks = this.helper.chunkText(text);
+  async processAndStoreDocument(
+    fileName: string,
+    chunks: string[],
+    startChunkNumber: number,
+  ) {
+    console.log(
+      `Processing batch for ${fileName}, starting at chunk ${startChunkNumber}.`,
+    );
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const vector = await this.gemini.getGeminiEmbedding(chunk);
-      const fullHash = this.helper.generateLsh(vector);
-      await this.client.storeChunk({
-        fileName,
-        chunkNo: i,
-        textChunk: chunk,
-        vector,
-        lshHash: fullHash,
-      });
+      const chunkNumber = startChunkNumber + i;
+
+      try {
+        const vector = await this.gemini.getGeminiEmbedding(chunk);
+        if (vector.length !== 3072) {
+          console.log('vector length',vector.length);
+          
+  console.warn('Embedding dim mismatch', vector.length);
+}
+
+        const fullHash = this.helper.generateLsh(vector);
+        await this.client.storeChunk({
+          fileName,
+          chunkNo: chunkNumber,
+          textChunk: chunk,
+          vector,
+          lshHash: fullHash,
+        });
+      } catch (err) {
+        console.error(
+          `Error processing chunk ${chunkNumber} for file ${fileName}:`,
+          err,
+        );
+        throw err;
+      }
     }
     console.log(`Stored ${chunks.length} chunks for ${fileName}`);
   }
-  
+
   async askQuestion(question: string, fileName: string): Promise<string> {
     const intent = await this.gemini.detectUserIntent(question);
     let answer: string;
@@ -59,11 +81,12 @@ export class RagService {
         const unique = Array.from(
           new Map(all.map((it) => [it.SK, it])).values(),
         );
-        if (unique.length >= 15)
+        if (unique.length >= 15) {
           console.log(
             `Early stop: found ${unique.length} candidates at ${prefixLength}-bit`,
           );
-        break;
+          break;
+        }
       }
       let unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
       console.log(`LSH retrieved ${unique.length} unique candidates`);

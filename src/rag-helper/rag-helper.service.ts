@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 
 @Injectable()
 export class RagHelperService implements OnModuleInit {
-  private readonly dimensions = 768;
+  private readonly dimensions = 3072
   private readonly lshPlanes = 16;
   private randomLshPlanes: number[][] = [];
 
@@ -27,16 +27,27 @@ export class RagHelperService implements OnModuleInit {
       `✅ Initialized ${this.lshPlanes} deterministic planes for ${this.dimensions} dims (seed=${seed})`,
     );
   }
+  
 
-  chunkText(text: string, chunkSize = 150, overlap = 100): string[] {
-    const words = text.split(/\s+/);
-    if (words.length <= chunkSize) return [text];
-    const chunks: string[] = [];
-    for (let i = 0; i < words.length; i += chunkSize - overlap) {
-      chunks.push(words.slice(i, i + chunkSize).join(' '));
-    }
-    return chunks;
-  }
+  // chunkText(text: string, chunkSize = 150, overlap = 100): string[] {
+  //   const words = text.split(/\s+/);
+  //   if (words.length <= chunkSize) return [text];
+  //   const chunks: string[] = [];
+  //   for (let i = 0; i < words.length; i += chunkSize - overlap) {
+  //     chunks.push(words.slice(i, i + chunkSize).join(' '));
+  //   }
+  //   console.log(`splitted ${chunks.length}`);
+    
+  //   return chunks;
+  // }
+
+  // chunkText(text: string): string[] {
+  //   const paragraphs = text.split(/[\n\r]+/).filter((p) => p.trim().length > 0);
+  //   console.log(
+  //     `Successfully split text into ${paragraphs.length} paragraph chunks.`,
+  //   );
+  //   return paragraphs;
+  // }
 
   generateLsh(vector: number[]): string {
     if (!this.randomLshPlanes.length) {
@@ -68,7 +79,7 @@ export class RagHelperService implements OnModuleInit {
     return magA && magB ? dot / (magA * magB) : 0;
   }
 
-generateProbePrefixes(
+  generateProbePrefixes(
     fullHash: string,
     prefixLength: number,
     probeCount: number,
