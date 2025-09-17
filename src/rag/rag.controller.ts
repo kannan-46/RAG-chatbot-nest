@@ -30,7 +30,7 @@ export class RagController {
 
   @Post('process-batch')
   async uploadFile(@Body() body: processBatch) {
-    console.log(`process batch body`,JSON.stringify(body));
+    // console.log(`process batch body`,JSON.stringify(body));
     
     const { fileName, chunks, startChunkNumber } = body;
 if (!fileName || !Array.isArray(chunks) || chunks.length === 0 || startChunkNumber == null) {

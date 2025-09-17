@@ -26,10 +26,9 @@ export class RagService {
       try {
         const vector = await this.gemini.getGeminiEmbedding(chunk);
         if (vector.length !== 3072) {
-          console.log('vector length',vector.length);
-          
-  console.warn('Embedding dim mismatch', vector.length);
-}
+          console.log('vector length', vector.length);
+          console.warn('Embedding dim mismatch', vector.length);
+        }
 
         const fullHash = this.helper.generateLsh(vector);
         await this.client.storeChunk({

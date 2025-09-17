@@ -28,27 +28,6 @@ export class RagHelperService implements OnModuleInit {
     );
   }
   
-
-  // chunkText(text: string, chunkSize = 150, overlap = 100): string[] {
-  //   const words = text.split(/\s+/);
-  //   if (words.length <= chunkSize) return [text];
-  //   const chunks: string[] = [];
-  //   for (let i = 0; i < words.length; i += chunkSize - overlap) {
-  //     chunks.push(words.slice(i, i + chunkSize).join(' '));
-  //   }
-  //   console.log(`splitted ${chunks.length}`);
-    
-  //   return chunks;
-  // }
-
-  // chunkText(text: string): string[] {
-  //   const paragraphs = text.split(/[\n\r]+/).filter((p) => p.trim().length > 0);
-  //   console.log(
-  //     `Successfully split text into ${paragraphs.length} paragraph chunks.`,
-  //   );
-  //   return paragraphs;
-  // }
-
   generateLsh(vector: number[]): string {
     if (!this.randomLshPlanes.length) {
       throw new Error('LSH planes not initialized');
