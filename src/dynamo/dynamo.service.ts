@@ -81,4 +81,6 @@ export class DynamoService {
     }))
     return result.Items ?? []
   }
+
+  
 }

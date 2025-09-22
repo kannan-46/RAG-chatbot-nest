@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 
 @Injectable()
 export class RagHelperService implements OnModuleInit {
-  private readonly dimensions = 3072
+  private readonly dimensions = 3072;
   private readonly lshPlanes = 16;
   private randomLshPlanes: number[][] = [];
 
@@ -27,7 +27,7 @@ export class RagHelperService implements OnModuleInit {
       `✅ Initialized ${this.lshPlanes} deterministic planes for ${this.dimensions} dims (seed=${seed})`,
     );
   }
-  
+
   generateLsh(vector: number[]): string {
     if (!this.randomLshPlanes.length) {
       throw new Error('LSH planes not initialized');

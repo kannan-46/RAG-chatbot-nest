@@ -42,8 +42,7 @@ export class RagService {
       } catch (err) {
         console.error(
           `Error processing chunk ${chunkNumber} for file ${fileName}:`,
-          err,
-        );
+             );
         throw err;
       }
     }
