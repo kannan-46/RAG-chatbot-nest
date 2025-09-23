@@ -80,7 +80,7 @@ export class RagService {
         const unique = Array.from(
           new Map(all.map((it) => [it.SK, it])).values(),
         );
-        if (unique.length >= 15) {
+        if (unique.length >= 5) {
           console.log(
             `Early stop: found ${unique.length} candidates at ${prefixLength}-bit`,
           );
@@ -90,13 +90,13 @@ export class RagService {
       let unique = Array.from(new Map(all.map((it) => [it.SK, it])).values());
       console.log(`LSH retrieved ${unique.length} unique candidates`);
 
-      if (unique.length < 10) {
+      if (unique.length < 5) {
         console.log(
           'LSh recall too low, fetching all chunks for comprehensive search',
         );
         const allChunks = await this.client.fetchAllChunksForFile(
           fileName,
-          100,
+          4,
         );
 
         const combined = [...unique, ...allChunks];
@@ -117,7 +117,7 @@ export class RagService {
       });
 
       const ranked = await this.helper.rankCandidates(qVec, unique);
-      const topK = ranked.slice(0, 10);
+      const topK = ranked.slice(0, 6);
       const context = ranked.map((c) => c.textChunk).join('\n\n---\n\n');
       console.log(`Final context contains ${topK.length} chunks.`);
       console.debug('--- FINAL CONTEXT ---');

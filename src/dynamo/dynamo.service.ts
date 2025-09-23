@@ -4,7 +4,7 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ProjectionType, ReturnConsumedCapacity } from '@aws-sdk/client-dynamodb';
 
 @Injectable()
 export class DynamoService {
@@ -30,7 +30,6 @@ export class DynamoService {
   }): Promise<void> {
     const chunkId = String(item.chunkNo).padStart(6, '0');
     const lshPrefix = item.lshHash.slice(0, 12);
-
     const dynamoItem = {
       PK: `FILE#${item.fileName}`,
       SK: `CHUNK#${chunkId}`,
@@ -39,9 +38,8 @@ export class DynamoService {
       textChunk: item.textChunk,
       vector: JSON.stringify(item.vector),
       sourceFile: item.fileName,
-      fullLSH: item.lshHash,
+      fullLSH: item.lshHash,  
     };
-
     await this.client.send(
       new PutCommand({
         TableName: 'dumyUser',
@@ -62,25 +60,32 @@ export class DynamoService {
         ':fp': `FILE#${fileName}`,
         ':lp': `LSH#${lshPrefix}`,
       },
-      ProjectionExpression: 'textChunk,vector,sourceFile',
+      ProjectionExpression: 'SK, textChunk,vector',
     };
     const result = await this.client.send(new QueryCommand(params));
     return result.Items ?? [];
   }
 
-  async fetchAllChunksForFile(fileName:string,limit:100):Promise<any[]>{
-    const result=await this.client.send(new QueryCommand({
-      TableName:'dumyUser',
-      KeyConditionExpression:'PK = :pk AND begins_with(SK, :sk)',
-      ExpressionAttributeValues:{
-        ':pk':`FILE#${fileName}`,
-        ':sk':`CHUNK#`
-      },
-      ProjectionExpression:'textChunk,vector,sourceFile,SK',
-      Limit:limit
-    }))
-    return result.Items ?? []
-  }
+async fetchAllChunksForFile(fileName: string, limit: number = 4): Promise<any[]> {
+  const params = {
+    TableName: 'dumyUser',
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: {
+      ':pk': `FILE#${fileName}`,
+      ':sk': `CHUNK#`
+    },
+    ProjectionExpression: 'SK, textChunk,vector',
+    Limit: limit,
+    ConsistentRead: false,
+    ReturnConsumedCapacity: 'TOTAL' as const
+  };
+
+  const response = await this.client.send(new QueryCommand(params));
+  console.log(
+  `fetchAllChunksForFile consumed ${response.ConsumedCapacity?.CapacityUnits ?? 0} RCUs`
+);
+  return response.Items ?? [];
+}
 
   
 }
